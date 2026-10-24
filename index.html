@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Services TS150</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1c2128;--mut:#59636e;--card:#fff;--bd:#d8dee4;--ac:#0969da;--ok:#1a7f37}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#e6edf3;--mut:#9198a1;--card:#161b22;--bd:#30363d;--ac:#4493f8;--ok:#3fb950}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,sans-serif}
+header{position:sticky;top:0;z-index:2;background:var(--card);border-bottom:1px solid var(--bd);padding:12px 16px}
+h1{font-size:18px;margin:0 0 8px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+input[type=search]{flex:1 1 200px;padding:8px 10px;border:1px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--fg)}
+button{padding:8px 12px;border:1px solid var(--bd);border-radius:6px;background:var(--card);color:var(--fg);cursor:pointer}
+button:hover{border-color:var(--ac)}
+.sum{margin-top:8px;color:var(--mut);font-size:13px}
+.ram{height:6px;background:var(--bd);border-radius:3px;margin-top:6px;overflow:hidden}
+.ram i{display:block;height:100%;background:var(--ok);width:0}
+main{max-width:1000px;margin:0 auto;padding:16px}
+h2{font-size:14px;margin:22px 0 8px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:8px}
+label.c{display:flex;gap:10px;padding:10px;background:var(--card);border:1px solid var(--bd);border-radius:8px;cursor:pointer}
+label.c:has(input:checked){border-color:var(--ac)}
+label.c.lock{cursor:default;opacity:.85}
+.n{font-weight:600}.d{color:var(--mut);font-size:13px}
+.t{font-size:12px;color:var(--mut)}.pl{color:var(--ok)}
+.hide{display:none}
+</style>
+</head>
+<body>
+<header>
+<h1>Services pour le TS150</h1>
+<div class="bar">
+<input type="search" id="q" placeholder="Rechercher un service…">
+<button id="cp">Copier ma sélection</button>
+<button id="lk">Copier le lien</button>
+<button id="dl">Télécharger (.txt)</button>
+<button id="rs">Réinitialiser</button>
+</div>
+<div class="sum" id="sum"></div>
+<div class="ram"><i id="rb"></i></div>
+</header>
+<main id="m"></main>
+<script>
+// [id, nom, description, port, RAM Mo, prévu, verrouillé]
+const D={
+"Socle":[
+["ubuntu","Ubuntu Server 26.04","Système de base","",600,1,1],
+["docker","Docker + Compose","Conteneurs","",300,1,1]],
+"Sécurité":[
+["crowdsec","CrowdSec","Protection collaborative contre les attaques","",200,1],
+["f2b","fail2ban + ufw","Pare-feu et bannissement SSH","",50,1],
+["authentik","Authentik","SSO / fournisseur d'identité","9000",2000,1],
+["infisical","Infisical","Gestionnaire de secrets","8085",800,1],
+["juice","OWASP Juice Shop","Appli volontairement vulnérable pour s'entraîner","3005",300,1],
+["vaultwarden","Vaultwarden","Gestionnaire de mots de passe (Bitwarden)","8200",50,0],
+["wazuh","Wazuh","SIEM / détection d'intrusion","5601",6000,0],
+["wgeasy","wg-easy","Interface WireGuard VPN","51821",50,0],
+["tailscale","Tailscale","Accès distant sans ouvrir de port","",50,0],
+["bunkerweb","BunkerWeb","Pare-feu applicatif web","",500,0]],
+"Freelance":[
+["umami","Umami","Statistiques web respectueuses","3003",300,1],
+["kimai","Kimai","Suivi du temps","8001",300,1],
+["twenty","Twenty","CRM","3010",1500,0],
+["calcom","Cal.com","Prise de rendez-vous","3020",1000,0],
+["ghost","Ghost","Blog / newsletter","2368",500,0],
+["listmonk","Listmonk","Newsletters","9100",150,0],
+["penpot","Penpot","Design collaboratif","9001",2500,0]],
+"Développement":[
+["nginx","Nginx + Certbot","Reverse proxy et HTTPS","80/443",50,1],
+["node","Node.js 22 + PM2","Applis Node","",200,1],
+["python","Python 3 + pip + venv","Scripts et outils","",50,1],
+["java","Java 21/25","Serveurs Minecraft","",100,1],
+["gitlab","GitLab","Forge Git complète","8929",5000,1],
+["coolify","Coolify","PaaS auto-hébergé","8000",1500,1],
+["n8n","n8n","Automatisation de workflows","5678",500,1],
+["mariadb","MariaDB","Base SQL","3306",400,1],
+["postgres","PostgreSQL","Base SQL","5432",300,1],
+["redis","Redis","Cache clé-valeur","6379",100,1],
+["adminer","Adminer","Interface web pour bases de données","8135",50,1],
+["forgejo","Forgejo","Forge Git légère (alternative GitLab)","3030",200,0],
+["codeserver","code-server","VS Code dans le navigateur","8444",500,0],
+["pocketbase","PocketBase","Backend en un binaire","8091",50,0],
+["ittools","IT-Tools","Boîte à outils de dév","8300",30,0],
+["excalidraw","Excalidraw","Tableau blanc","8301",50,0]],
+"Surveillance":[
+["portainer","Portainer","Gestion Docker","9443",100,1],
+["cockpit","Cockpit","Administration serveur web","9090",100,1],
+["homepage","Homepage","Page d'accueil des services","3002",100,1],
+["netdata","Netdata","Métriques temps réel","19999",300,1],
+["dozzle","Dozzle","Logs Docker","8080",30,1],
+["beszel","Beszel","Monitoring léger","8090",50,1],
+["kuma","Uptime Kuma","Surveillance de disponibilité","3001",150,1],
+["scrutiny","Scrutiny","Santé des disques (SMART)","8101",100,1],
+["grafana","Grafana + Prometheus","Tableaux de bord de métriques","3100",800,0],
+["ntfy","ntfy","Notifications push","8310",30,0],
+["glances","Glances","Moniteur système","61208",100,0]],
+"Minecraft":[
+["pelican","Pelican Panel","Panel de serveurs de jeu (25565-25700)","8088",800,1],
+["bluemap","BlueMap","Carte web 3D du monde","",300,0],
+["plan","Plan","Statistiques joueurs","",100,0]],
+"Fichiers":[
+["samba","Samba","Partage réseau Windows","445",100,1],
+["filebrowser","File Browser","Gestionnaire de fichiers web","8081",50,1],
+["nextcloud","Nextcloud","Cloud personnel","8106",1000,1],
+["kopia","Kopia","Sauvegardes chiffrées","51515",200,0],
+["syncthing","Syncthing","Synchronisation de fichiers","8384",100,0],
+["paperless","Paperless-ngx","Archivage de documents","8010",1500,0],
+["immich","Immich","Photos (alternative Google Photos)","2283",4000,0],
+["jellyfin","Jellyfin","Médiathèque vidéo","8096",600,0]],
+"Perso":[
+["actual","Actual Budget","Budget","5006",150,1],
+["wger","wger","Suivi sportif","8111",1500,1],
+["mealie","Mealie","Recettes","9925",300,1],
+["ha","Home Assistant","Domotique","8123",600,0],
+["ollama","Ollama + Open WebUI","IA locale","3200",8000,0],
+["linkding","linkding","Marque-pages","9091",80,0]],
+"Réseau":[
+["pihole","Pi-hole","Bloqueur de pub DNS","8053",100,1],
+["cftunnel","Cloudflare Tunnel","Publier sans ouvrir de port","",50,1],
+["adguard","AdGuard Home","Alternative à Pi-hole (conflit port 53)","3000",150,0],
+["npm","Nginx Proxy Manager","Reverse proxy graphique (conflit 80/443)","81",200,0],
+["traefik","Traefik","Reverse proxy Docker","8320",100,0]],
+"Support":[
+["rustdesk","RustDesk Server","Bureau à distance","21115-21117",100,1],
+["glpi","GLPI","Parc informatique / tickets","8330",800,0],
+["snipeit","Snipe-IT","Inventaire matériel","8331",500,0],
+["zammad","Zammad","Support client","8332",4000,0],
+["librenms","LibreNMS","Supervision réseau","8333",1500,0]]
+};
+const KEY="ts150-sel";
+const cats=Object.keys(D);
+const items=[];
+cats.forEach(c=>D[c].forEach(s=>items.push({cat:c,id:s[0],name:s[1],desc:s[2],port:s[3],ram:s[4],plan:!!s[5],lock:!!s[6]})));
+const defaults=()=>new Set(items.filter(s=>s.plan).map(s=>s.id));
+let sel;
+try{
+  const h=location.hash.slice(1);
+  if(h)sel=new Set(h.split(","));
+  else if(localStorage.getItem(KEY))sel=new Set(JSON.parse(localStorage.getItem(KEY)));
+}catch(e){}
+if(!sel)sel=defaults();
+items.filter(s=>s.lock).forEach(s=>sel.add(s.id));
+const m=document.getElementById("m");
+cats.forEach(c=>{
+  const h=document.createElement("h2");h.textContent=c;m.append(h);
+  const g=document.createElement("div");g.className="grid";
+  items.filter(s=>s.cat===c).forEach(s=>{
+    const l=document.createElement("label");
+    l.className="c"+(s.lock?" lock":"");
+    l.dataset.k=(s.name+" "+s.desc+" "+c).toLowerCase();
+    const cb=document.createElement("input");
+    cb.type="checkbox";cb.dataset.id=s.id;cb.disabled=s.lock;
+    const w=document.createElement("div");
+    const n=document.createElement("div");n.className="n";n.textContent=s.name;
+    const d=document.createElement("div");d.className="d";d.textContent=s.desc;
+    const t=document.createElement("div");t.className="t";
+    const ram=s.ram>=1000?(s.ram/1000).toFixed(1)+" Go":s.ram+" Mo";
+    t.textContent=(s.port?"port "+s.port+" · ":"")+"≈ "+ram+(s.plan?" · prévu":"");
+    w.append(n,d,t);l.append(cb,w);g.append(l);
+  });
+  m.append(g);
+});
+const boxes=[...document.querySelectorAll("input[data-id]")];
+function render(){
+  boxes.forEach(b=>b.checked=sel.has(b.dataset.id));
+  const ch=items.filter(s=>sel.has(s.id));
+  const ram=ch.reduce((a,s)=>a+s.ram,0);
+  const total=items.filter(s=>s.plan).length;
+  const kept=ch.filter(s=>s.plan).length;
+  const add=ch.length-kept;
+  document.getElementById("sum").textContent=ch.length+" services · prévus gardés "+kept+"/"+total+" · ajouts "+add+" · retraits "+(total-kept)+" · RAM ≈ "+(ram/1000).toFixed(1)+" / 32 Go";
+  const rb=document.getElementById("rb");
+  rb.style.width=Math.min(100,ram/320)+"%";
+  rb.style.background=ram>28000?"#cf222e":ram>20000?"#bf8700":"";
+  try{localStorage.setItem(KEY,JSON.stringify([...sel]))}catch(e){}
+}
+boxes.forEach(b=>b.addEventListener("change",()=>{
+  if(b.checked)sel.add(b.dataset.id);else sel.delete(b.dataset.id);
+  render();
+}));
+document.getElementById("q").addEventListener("input",e=>{
+  const q=e.target.value.toLowerCase().trim();
+  document.querySelectorAll("label.c").forEach(l=>l.classList.toggle("hide",!!q&&!l.dataset.k.includes(q)));
+  document.querySelectorAll(".grid").forEach(g=>{
+    const any=[...g.children].some(l=>!l.classList.contains("hide"));
+    g.classList.toggle("hide",!any);
+    g.previousElementSibling.classList.toggle("hide",!any);
+  });
+});
+function txt(){
+  const o=[];
+  cats.forEach(c=>{
+    const l=items.filter(s=>s.cat===c&&sel.has(s.id));
+    if(l.length)o.push(c+" : "+l.map(s=>s.name).join(", "));
+  });
+  return o.join("\n");
+}
+function flash(b,t){const o=b.textContent;b.textContent=t;setTimeout(()=>{b.textContent=o},1200)}
+function copy(e,s){navigator.clipboard.writeText(s).then(()=>flash(e.target,"Copié"),()=>flash(e.target,"Échec"))}
+document.getElementById("cp").onclick=e=>copy(e,txt());
+document.getElementById("lk").onclick=e=>copy(e,location.href.split("#")[0]+"#"+[...sel].join(","));
+document.getElementById("dl").onclick=()=>{
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([txt()],{type:"text/plain"}));
+  a.download="selection-ts150.txt";a.click();
+};
+document.getElementById("rs").onclick=()=>{sel=defaults();render()};
+render();
+</script>
+</body>
+</html>
